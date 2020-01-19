@@ -302,10 +302,10 @@ end
 
 
 function sub_save()
-	luci.http.prepare_content("text/plain; charset=utf-8")
 	local conf="/usr/share/clash/config/sub/config.yaml"
-	local fdp=fs.readfile(conf)
-	fs.writefile("/usr/share/clash/config/sub/config.yaml",tostring(fdp))
+	function(self, section, value)
+	fs.writefile(conf, value:gsub("\r\n", "\n"))
+	end
 	luci.http.redirect(luci.dispatcher.build_url("admin", "services", "clash" , "config", "subconfig"))	
 end
 

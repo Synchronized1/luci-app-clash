@@ -25,14 +25,18 @@ function download_conf(){
 
 
 function apply_del_conf(){
-	XHR.get('<%=url([[admin]], [[services]], [[clash]], [[delog]])%>',null,function(x, data){}
+	XHR.get('<%=url([[admin]], [[services]], [[clash]], [[delog]])%>',null,function(x, data){
+	window.setTimeout("location.href='/cgi-bin/luci/admin/services/clash/config/subconfig'", 500);	
+	}
 	);
 	return
 }
 
 
 function apply_change_conf(){
-	XHR.get('<%=url([[admin]], [[services]], [[clash]], [[apply]])%>',null,function(x, data){}
+	XHR.get('<%=url([[admin]], [[services]], [[clash]], [[apply]])%>',null,function(x, data){
+	window.setTimeout("location.href='/cgi-bin/luci/admin/services/clash/config/subconfig'", 500);	
+	}
 	);
 	return
 }
