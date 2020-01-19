@@ -296,17 +296,16 @@ end
 end
 
 function del_conf()
-	luci.sys.exec.call("rm -rf /usr/share/clash/config/sub/config.yaml 2>&1 &")
-	http.prepare_content("application/json")
-	http.write('')
+	luci.sys.exec("rm -rf /usr/share/clash/config/sub/config.yaml 2>&1 &")
+	luci.http.redirect(luci.dispatcher.build_url("admin", "services", "clash" , "config", "subconfig"))
 end
 
 
 function sub_save()
+	luci.http.prepare_content("text/plain; charset=utf-8")
 	local conf="/usr/share/clash/config/sub/config.yaml"
-	local fdp=fs.readfile(conf) or ""	
-	fs.writefile(conf, fdp:gsub("\r\n", "\n"))
-	http.prepare_content("application/json")
-	http.write('')
+	local fdp=fs.readfile(conf)
+	fs.writefile("/usr/share/clash/config/sub/config.yaml",tostring(fdp))
+	luci.http.redirect(luci.dispatcher.build_url("admin", "services", "clash" , "config", "subconfig"))	
 end
 
