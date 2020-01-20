@@ -17,7 +17,7 @@ s.anonymous = true
 s.addremove=false
 
 
-local conf = "/usr/share/clash/config/custom/config.yaml"
+local conf = string.sub(luci.sys.exec("uci get clash.config.config_path_cus"), 1, -2)
 sev = s:option(TextValue, "conf")
 --sev.readonly=true
 sev.rows = 20
@@ -37,22 +37,74 @@ o.write = function()
 end
 
 
-o = s:option(Button,"configrm")
-o.inputtitle = translate("Delete Config")
-o.write = function()
-  SYS.call("rm -rf /usr/share/clash/config/custom/config.yaml 2>&1 &")
+local e,a={}
+for t,o in ipairs(fs.glob("/usr/share/clash/config/custom/*"))do
+a=fs.stat(o)
+if a then
+e[t]={}
+e[t].name=fs.basename(o)
+e[t].mtime=os.date("%Y-%m-%d %H:%M:%S",a.mtime)
+if string.sub(luci.sys.exec("uci get clash.config.config_path_cus"), 23, -2) == e[t].name then
+   e[t].state=translate("In Use")
+else
+   e[t].state=translate("Not In Use")
+end
+e[t].size=tostring(a.size)
+e[t].remove=0
+e[t].enable=false
+end
 end
 
-o = s:option(Button, "Download") 
-o.inputtitle = translate("Download Config")
-o.inputstyle = "apply"
-o.write = function ()
+form=Form("config_file_list",translate("Config List"))
+form.reset=false
+form.submit=false
+tb=form:section(Table,e)
+st=tb:option(DummyValue,"state",translate("State"))
+nm=tb:option(DummyValue,"name",translate("File Name"))
+mt=tb:option(DummyValue,"mtime",translate("Update Time"))
+sz=tb:option(DummyValue,"size",translate("Size"))
+
+function IsYamlFile(e)
+e=e or""
+local e=string.lower(string.sub(e,-5,-1))
+return e==".yaml"
+end
+
+btnis=tb:option(Button,"switch",translate("Switch"))
+btnis.template="clash/other_button"
+btnis.render=function(o,t,a)
+if not e[t]then return false end
+if IsYamlFile(e[t].name)then
+a.display=""
+else
+a.display="none"
+end
+o.inputstyle="apply"
+Button.render(o,t,a)
+end
+btnis.write=function(a,t)
+luci.sys.exec(string.format('uci set clash.config.config_path_cus="/usr/share/clash/config/custom/%s"',e[t].name ))
+luci.sys.exec(string.format('uci set clash.config.config_cus_name="%s"',e[t].name))
+luci.sys.exec('uci commit clash')
+HTTP.redirect(luci.dispatcher.build_url("admin", "services", "clash", "config", "cusconfig"))
+end
+
+
+
+
+btndl = tb:option(Button,"download",translate("Download")) 
+btndl.template="clash/other_button"
+btndl.render=function(e,t,a)
+e.inputstyle="remove"
+Button.render(e,t,a)
+end
+btndl.write = function (a,t)
 	local sPath, sFile, fd, block
-	sPath = "/usr/share/clash/config/custom/config.yaml"
+	sPath = "/usr/share/clash/config/custom/"..e[t].name
 	sFile = NXFS.basename(sPath)
 	if fs.isdirectory(sPath) then
-		fd = io.popen('tar -C "%s" -cz .' % {sPath}, "r")
-		sFile = sFile .. ".tar.gz"
+		fd = io.popen('yaml -C "%s" -cz .' % {sPath}, "r")
+		sFile = sFile .. ".yaml"
 	else
 		fd = nixio.open(sPath, "r")
 	end
@@ -73,4 +125,16 @@ o.write = function ()
 	HTTP.close()
 end
 
-return m
+
+btnrm=tb:option(Button,"remove",translate("Remove"))
+btnrm.render=function(e,t,a)
+e.inputstyle="remove"
+Button.render(e,t,a)
+end
+btnrm.write=function(a,t)
+local a=fs.unlink("/usr/share/clash/config/custom/"..fs.basename(e[t].name))
+if a then table.remove(e,t)end
+return a
+end
+
+return m,form
